@@ -4,7 +4,8 @@ import { useState } from "react";
 import DialogueCard from "../components/DialogueCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, Download, Languages } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Sparkles, Download, Languages, AlertCircle, X } from "lucide-react";
 
 type Message = { A?: string; B?: string };
 type Dialogue = { topic: string; dialogue: Message[] };
@@ -12,13 +13,20 @@ type Dialogue = { topic: string; dialogue: Message[] };
 export default function Home() {
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchDialogues = async () => {
     setLoading(true);
+    setError(null); // Clear previous errors
+    
     try {
       const res = await fetch("http://localhost:8000/generate-dialogues");
-      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(`Server responded with ${res.status}: ${res.statusText}`);
+      }
 
+      const data = await res.json();
       let raw = data.dialogues;
 
       // Step 1: Remove outer quotes if present
@@ -35,10 +43,24 @@ export default function Home() {
       // Step 4: Parse JSON
       const parsed = JSON.parse(raw);
 
+      if (!Array.isArray(parsed)) {
+        throw new Error("Invalid response format: expected an array of dialogues");
+      }
+
       setDialogues(parsed);
     } catch (err) {
-      console.error("Failed to parse dialogues:", err);
-      alert("Error fetching dialogues. Check console.");
+      console.error("Failed to fetch dialogues:", err);
+      
+      // Provide user-friendly error messages
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError("Cannot connect to the server. Please ensure the backend is running on port 8000.");
+      } else if (err instanceof SyntaxError) {
+        setError("Received invalid data from server. The response format may have changed.");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -61,6 +83,25 @@ export default function Home() {
             Generate authentic Arabic conversations for language learning and cultural understanding
           </p>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive" className="max-w-2xl mx-auto mb-6 shadow-lg">
+            <AlertCircle className="h-5 w-5" />
+            <AlertTitle className="font-semibold">Error</AlertTitle>
+            <AlertDescription className="mt-2 flex items-start justify-between gap-4">
+              <span className="flex-1">{error}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-destructive/20"
+                onClick={() => setError(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Action Card */}
         <Card className="max-w-2xl mx-auto mb-12 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
