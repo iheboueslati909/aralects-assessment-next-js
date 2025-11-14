@@ -14,13 +14,20 @@ export default function Home() {
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("flash_lite");
+
+  const availableModels = [
+    { key: "flash_lite", label: "Gemini 2.5 Flash Lite" },
+    { key: "flash", label: "Gemini 2.5 Flash" },
+
+  ];
 
   const fetchDialogues = async () => {
     setLoading(true);
-    setError(null); // Clear previous errors
-    
+    setError(null);
+
     try {
-      const res = await fetch("http://localhost:8000/generate-dialogues");
+      const res = await fetch(`http://localhost:8000/generate-dialogues?model=${selectedModel}`);
       
       if (!res.ok) {
         throw new Error(`Server responded with ${res.status}: ${res.statusText}`);
@@ -51,7 +58,6 @@ export default function Home() {
     } catch (err) {
       console.error("Failed to fetch dialogues:", err);
       
-      // Provide user-friendly error messages
       if (err instanceof TypeError && err.message.includes('fetch')) {
         setError("Cannot connect to the server. Please ensure the backend is running on port 8000.");
       } else if (err instanceof SyntaxError) {
@@ -114,7 +120,21 @@ export default function Home() {
               Click below to create realistic Arabic conversations on various topics
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center">
+          <CardContent className="flex flex-col items-center gap-4">
+            {/* Model Selector */}
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="p-2 rounded-lg border border-gray-300"
+            >
+              {availableModels.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Generate Button */}
             <Button 
               onClick={fetchDialogues}
               disabled={loading}
